@@ -49,17 +49,22 @@ public with sharing class AccountTriggerHandler {
       }
     }
 
-    List<Contact> relatedContacts = [
-      SELECT Name, id, Is_Synced__c, Processed_By_Future__c
-      FROM Contact
-      WHERE AccountId IN :accWithChangedAddress
+    List<Account> getRelatedContacts = [
+      SELECT
+        id,
+        (SELECT Name, id, Is_Synced__c, Processed_By_Future__c FROM Contacts)
+      FROM Account
+      WHERE Id IN :accWithChangedAddress
     ];
 
-    for (Contact con : relatedContacts) {
-      con.Is_Synced__c = false;
-      con.Processed_By_Future__c = true;
+    for (Account acc : getRelatedContacts) {
+      for (Contact con : acc.Contacts) {
+        con.Is_Synced__c = false;
+        con.Processed_By_Future__c = true;
+      }
     }
-    update relatedContacts;
+
+    update getRelatedContacts;
   }
 
   // In AccountTriggerHandler call Queueble Job, which perform similar logic:

@@ -18,18 +18,6 @@ public with sharing class checkBillingAddressWithQueueable implements queueable 
   }
 
   public void execute(QueueableContext context) {
-    // List<Account> accWithChangedAddress = [
-    //   SELECT id, (SELECT id, AccountId FROM contacts)
-    //   FROM newAccounts
-    //   WHERE BillingAddress NOT IN (:oldAccounts)
-    // ];
-
-    // List<Contact> relatedContacts = [
-    //   SELECT Name, id, Is_Synced__c, Processed_By_Queue__c
-    //   FROM Contact
-    //   WHERE AccountId IN :accWithChangedAddress
-    // ];
-
     List<Account> accWithChangedAddress = new List<Account>();
 
     for (Account acc : newAccounts) {
@@ -39,16 +27,21 @@ public with sharing class checkBillingAddressWithQueueable implements queueable 
       }
     }
 
-    List<Contact> relatedContacts = [
-      SELECT Name, id, Is_Synced__c, Processed_By_Future__c
-      FROM Contact
-      WHERE AccountId IN :accWithChangedAddress
+    List<Account> getRelatedContacts = [
+      SELECT
+        id,
+        (SELECT Name, id, Is_Synced__c, Processed_By_Queue__c FROM Contacts)
+      FROM Account
+      WHERE Id IN :accWithChangedAddress
     ];
 
-    for (Contact con : relatedContacts) {
-      con.Is_Synced__c = false;
-      con.Processed_By_Queue__c = true;
+    for (Account acc : getRelatedContacts) {
+      for (Contact con : acc.Contacts) {
+        con.Is_Synced__c = false;
+        con.Processed_By_Queue__c = true;
+      }
     }
-    update relatedContacts;
+
+    update getRelatedContacts;
   }
 }
